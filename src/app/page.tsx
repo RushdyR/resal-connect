@@ -7,7 +7,6 @@ import { Locale, t, isRTL } from "@/lib/i18n";
 import { PartnerCard } from "@/components/partner-card";
 import { ActivationModal } from "@/components/activation-modal";
 import { ConfirmationModal } from "@/components/confirmation-modal";
-import { LanguageToggle } from "@/components/language-toggle";
 
 interface Partner {
   id: string;
@@ -36,7 +35,8 @@ export default function HomePage() {
 
 function HomeContent() {
   const searchParams = useSearchParams();
-  const [locale, setLocale] = useState<Locale>("en");
+  const langParam = searchParams.get("lang");
+  const locale: Locale = langParam === "ar" ? "ar" : "en";
   const [partners, setPartners] = useState<Partner[]>([]);
   const [activatedPartnerIds, setActivatedPartnerIds] = useState<Set<string>>(new Set());
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
@@ -139,26 +139,6 @@ function HomeContent() {
 
   return (
     <div dir={dir} className="min-h-screen bg-[#FAFAFC]">
-        {/* Top Bar */}
-        <header className="flex items-center justify-end gap-4 border-b bg-white px-8 py-3">
-          <div className="flex items-center gap-3">
-            <LanguageToggle
-              locale={locale}
-              onToggle={() => setLocale(locale === "en" ? "ar" : "en")}
-            />
-            <div className="h-6 w-px bg-border" />
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                {merchant.merchantName.charAt(0).toUpperCase()}
-              </div>
-              <div className="text-end">
-                <div className="text-xs text-muted-foreground">{merchant.merchantEmail}</div>
-                <div className="text-sm font-medium">{merchant.merchantName}</div>
-              </div>
-            </div>
-          </div>
-        </header>
-
         {/* Page Content */}
         <main className="px-8 py-6">
           {/* Breadcrumb */}
