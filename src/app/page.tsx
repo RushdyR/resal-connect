@@ -1,101 +1,240 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { Locale, t, isRTL } from "@/lib/i18n";
+import { PartnerCard } from "@/components/partner-card";
+import { ActivationModal } from "@/components/activation-modal";
+import { ConfirmationModal } from "@/components/confirmation-modal";
+import { LanguageToggle } from "@/components/language-toggle";
+
+interface Partner {
+  id: string;
+  name: string;
+  nameAr: string;
+  category: string;
+  categoryAr: string;
+  description: string | null;
+  descriptionAr: string | null;
+  logoUrl: string | null;
+}
+
+interface MerchantInfo {
+  merchantId: string;
+  merchantName: string;
+  merchantEmail: string;
+}
+
+export default function HomePage() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
+      <HomeContent />
+    </Suspense>
+  );
+}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const [locale, setLocale] = useState<Locale>("en");
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [activatedPartnerIds, setActivatedPartnerIds] = useState<Set<string>>(new Set());
+  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmedPartnerName, setConfirmedPartnerName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [showBanner, setShowBanner] = useState(true);
+
+  // Read merchant info from URL params
+  // Usage: /?merchantId=123&merchantName=StoreName&merchantEmail=store@email.com
+  const merchant: MerchantInfo = {
+    merchantId: searchParams.get("merchantId") || "",
+    merchantName: searchParams.get("merchantName") || "",
+    merchantEmail: searchParams.get("merchantEmail") || "",
+  };
+  const hasMerchant = merchant.merchantId && merchant.merchantName && merchant.merchantEmail;
+
+  useEffect(() => {
+    fetch("/api/partners")
+      .then((res) => res.json())
+      .then((data) => setPartners(data));
+
+    // Load activated partners scoped to this merchant
+    if (merchant.merchantId) {
+      const stored = localStorage.getItem(`activatedPartners_${merchant.merchantId}`);
+      if (stored) {
+        setActivatedPartnerIds(new Set(JSON.parse(stored)));
+      }
+    }
+  }, [merchant.merchantId]);
+
+  const handleActivate = (partner: Partner) => {
+    setSelectedPartner(partner);
+  };
+
+  const handleConfirm = async (earnPoints: boolean, redeemPoints: boolean) => {
+    if (!selectedPartner) return;
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/activations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          partnerId: selectedPartner.id,
+          earnPoints,
+          redeemPoints,
+          ...merchant,
+        }),
+      });
+
+      if (res.ok) {
+        const newActivated = new Set(activatedPartnerIds);
+        newActivated.add(selectedPartner.id);
+        setActivatedPartnerIds(newActivated);
+        localStorage.setItem(
+          `activatedPartners_${merchant.merchantId}`,
+          JSON.stringify(Array.from(newActivated))
+        );
+
+        const name =
+          locale === "ar" ? selectedPartner.nameAr : selectedPartner.name;
+        setConfirmedPartnerName(name);
+        setSelectedPartner(null);
+        setShowConfirmation(true);
+      }
+    } catch (err) {
+      console.error("Activation failed:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const dir = isRTL(locale) ? "rtl" : "ltr";
+
+  // Guard: require merchant params
+  if (!hasMerchant) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAFAFC] p-8 text-center">
+        <div className="mx-auto max-w-md rounded-2xl border bg-white p-8 shadow-sm">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+            <svg className="h-8 w-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold text-foreground">Access Required</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This page must be accessed from the Resal merchant dashboard. Please navigate to ResalConnect from your dashboard.
+          </p>
+          <div className="mt-6 rounded-lg bg-muted p-3 text-start">
+            <p className="text-xs font-medium text-muted-foreground">Required URL parameters:</p>
+            <code className="mt-1 block text-xs text-foreground">?merchantId=...&merchantName=...&merchantEmail=...</code>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+    );
+  }
+
+  return (
+    <div dir={dir} className="min-h-screen bg-[#FAFAFC]">
+        {/* Top Bar */}
+        <header className="flex items-center justify-end gap-4 border-b bg-white px-8 py-3">
+          <div className="flex items-center gap-3">
+            <LanguageToggle
+              locale={locale}
+              onToggle={() => setLocale(locale === "en" ? "ar" : "en")}
+            />
+            <div className="h-6 w-px bg-border" />
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                {merchant.merchantName.charAt(0).toUpperCase()}
+              </div>
+              <div className="text-end">
+                <div className="text-xs text-muted-foreground">{merchant.merchantEmail}</div>
+                <div className="text-sm font-medium">{merchant.merchantName}</div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="px-8 py-6">
+          {/* Breadcrumb */}
+          <div className="mb-1 text-sm text-muted-foreground">
+            {t(locale, "breadcrumbHome")} / {t(locale, "resalConnect")}
+          </div>
+
+          {/* Title */}
+          <h1 className="text-2xl font-bold text-foreground">
+            {t(locale, "appName")}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
+            {t(locale, "subtitle")}
+          </p>
+
+          {/* Early Access Banner */}
+          {showBanner && (
+            <div className="mt-6 flex items-start justify-between rounded-xl border border-blue-200 bg-blue-50 px-5 py-4">
+              <div className="flex items-start gap-3">
+                <svg className="mt-0.5 h-5 w-5 shrink-0 text-primary" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                </svg>
+                <div>
+                  <div className="font-semibold text-foreground">
+                    {t(locale, "earlyAccessTitle")}
+                  </div>
+                  <div className="mt-0.5 text-sm text-muted-foreground">
+                    {t(locale, "earlyAccessDesc")}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBanner(false)}
+                className="shrink-0 rounded-lg p-1 text-muted-foreground hover:bg-blue-100 transition-colors"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Partner Cards Grid */}
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {partners.map((partner) => (
+              <PartnerCard
+                key={partner.id}
+                partner={partner}
+                locale={locale}
+                activated={activatedPartnerIds.has(partner.id)}
+                onActivate={handleActivate}
+              />
+            ))}
+          </div>
+        </main>
+
+      {/* Activation Modal */}
+      {selectedPartner && (
+        <ActivationModal
+          partner={selectedPartner}
+          locale={locale}
+          onClose={() => setSelectedPartner(null)}
+          onConfirm={handleConfirm}
+          submitting={submitting}
+        />
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmation && (
+        <ConfirmationModal
+          partnerName={confirmedPartnerName}
+          locale={locale}
+          onClose={() => setShowConfirmation(false)}
+        />
+      )}
     </div>
   );
 }
