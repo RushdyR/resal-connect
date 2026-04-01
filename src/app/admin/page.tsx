@@ -264,7 +264,7 @@ export default function AdminDashboardPage() {
                     <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 13, fontWeight: 500 }} />
                     <Tooltip
                       contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-                      formatter={(value: number) => [`${value} merchants`, 'Requests']}
+                      formatter={(value) => [`${value} merchants`, 'Requests']}
                     />
                     <Bar dataKey="requests" radius={[0, 8, 8, 0]} maxBarSize={36}>
                       {partnerGroups.map(([key], index) => (
@@ -314,13 +314,13 @@ export default function AdminDashboardPage() {
                     </Pie>
                     <Tooltip
                       contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-                      formatter={(value: number) => [`${value} activations`, '']}
+                      formatter={(value) => [`${value} activations`, '']}
                     />
                     <Legend
                       verticalAlign="bottom"
                       iconType="circle"
                       iconSize={10}
-                      formatter={(value: string) => <span style={{ color: '#6b7280', fontSize: 13 }}>{value}</span>}
+                      formatter={(value) => <span style={{ color: '#6b7280', fontSize: 13 }}>{value}</span>}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -396,8 +396,8 @@ export default function AdminDashboardPage() {
                   <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                   <Tooltip
                     contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-                    formatter={(value: number) => [`${value} requests`, 'Activations']}
-                    labelFormatter={(label: string) => `Date: ${label}`}
+                    formatter={(value) => [`${value} requests`, 'Activations']}
+                    labelFormatter={(label) => `Date: ${label}`}
                   />
                   <Area
                     type="monotone"
