@@ -4,6 +4,7 @@ import { activations, partners } from "@/lib/schema";
 import { sendSubmissionEmail } from "@/lib/email";
 import { v4 as uuidv4 } from "uuid";
 import { desc } from "drizzle-orm";
+import { timingSafeEqual } from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,15 @@ export async function POST(request: NextRequest) {
 
     if (!partnerId || !merchantId || !merchantName || !merchantEmail) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(merchantEmail)) {
+      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+    }
+
+    if (merchantName.length > 200 || merchantId.length > 200 || merchantEmail.length > 254) {
+      return NextResponse.json({ error: "Invalid field length" }, { status: 400 });
     }
 
     if (!earnPoints && !redeemPoints) {
@@ -59,7 +69,17 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const password = request.headers.get("x-admin-password");
-  if (password !== process.env.ADMIN_PASSWORD) {
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!password || !adminPassword) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    const a = Buffer.from(password.padEnd(72));
+    const b = Buffer.from(adminPassword.padEnd(72));
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
