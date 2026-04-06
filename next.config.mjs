@@ -23,6 +23,7 @@ const nextConfig = {
               "img-src 'self' data: https:",
               "connect-src 'self'",
               "frame-ancestors 'self' https://stage-app.boonus.app/",
+              "frame-ancestors 'self' http://localhost:3000/",
             ].join("; "),
           },
         ],
