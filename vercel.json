@@ -1,18 +1,3 @@
 {
-  "public": true,
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Frame-Options",
-          "value": ""
-        },
-        {
-          "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://merchant.resal.me https://stage-app.boonus.app http://localhost:3000"
-        }
-      ]
-    }
-  ]
+  "public": true
 }
