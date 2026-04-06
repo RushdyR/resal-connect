@@ -5,7 +5,7 @@ const nextConfig = {
       {
         source: "/(.*)",
         headers: [
-          { key: "X-Frame-Options", value: "ALLOW-FROM https://stage-app.boonus.app/" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
@@ -22,8 +22,7 @@ const nextConfig = {
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: https:",
               "connect-src 'self'",
-              "frame-ancestors 'self' https://stage-app.boonus.app/",
-              "frame-ancestors 'self' http://localhost:3000/",
+              "frame-ancestors 'self' https://merchant.resal.me https://stage-app.boonus.app http://localhost:3000",
             ].join("; "),
           },
         ],
