@@ -48,7 +48,7 @@ export function PartnerCard({
       <h3 className="text-base font-bold text-foreground">{name}</h3>
 
       {/* Description */}
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground min-h-[48px]">
+      <p className="mt-2 text-sm leading-relaxed text-foreground/70 min-h-[48px]">
         {description}
       </p>
 
