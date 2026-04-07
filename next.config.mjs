@@ -21,7 +21,7 @@ const nextConfig = {
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: https:",
               "connect-src 'self'",
-              "frame-ancestors 'self' https://merchant.resal.me https://stage-app.boonus.app http://localhost:3000",
+              "frame-ancestors 'self' https://merchant.resal.me https://stage.boonus.app http://localhost:3000",
             ].join("; "),
           },
         ],
